@@ -87,7 +87,13 @@ EXTRACT_JS = """
 async def scrape(username: str, password: str, state: dict) -> dict:
     async with async_playwright() as pw:
         browser = await pw.chromium.launch(args=["--no-sandbox"])
-        context = await browser.new_context()
+        context = await browser.new_context(
+            user_agent=(
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+            ),
+            viewport={"width": 1280, "height": 900},
+        )
         page = await context.new_page()
         page.set_default_timeout(20_000)
         try:
@@ -103,7 +109,16 @@ async def scrape(username: str, password: str, state: dict) -> dict:
             try:
                 await page.wait_for_url(lambda u: "PXP2_Login" not in u, timeout=15_000)
             except PWTimeout:
-                # Still on the login page => bad credentials
+                # Still on the login page => most likely bad credentials.
+                # Log what the login page says (login page only, no grades) to help debug.
+                try:
+                    body = " ".join((await page.inner_text("body")).split())
+                    for secret in (username, password):
+                        if secret:
+                            body = body.replace(secret, "***")
+                    log.error("login page text after submit: %s", body[:300])
+                except Exception:
+                    pass
                 raise HTTPException(status_code=401, detail="Invalid StudentVUE username or password")
 
             # ---- grade book ----
