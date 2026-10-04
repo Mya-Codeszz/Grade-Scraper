@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: grade-scraper
+    runtime: docker
+    plan: starter   # headless Chrome needs ~512MB+; free tier often runs out of memory
+    healthCheckPath: /health
+    envVars:
+      - key: SCRAPER_API_KEY
+        generateValue: true
+      - key: PORTAL_BASE
+        value: https://az-eef.edupoint.com
